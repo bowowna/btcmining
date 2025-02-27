@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Биткоин-вознаграждение за рекламу</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Занимаем всю высоту экрана */
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            display: flex;
+            flex-grow: 1; /* Растягиваем контейнер на всю доступную высоту */
+        }
+
+        .sidebar {
+            width: 200px;
+            background-color: #ddd;
+            padding: 20px;
+            display: flex;
+            flex-direction: column; /* Элементы сайдбара вертикально */
+            align-items: center; /* Центрируем по горизонтали */
+        }
+
+        .sidebar-ad {
+            width: 160px;
+            height: 200px; /* Примерная высота баннера */
+            background-color: #ccc;
+            margin-bottom: 20px; /* Отступ между баннерами */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .top-ad, .bottom-ad {
+            width: 100%;
+            height: 100px; /* Примерная высота баннера */
+            background-color: #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .bottom-ad{
+            margin-top: 10px;
+            margin-bottom: 0;
+        }
+
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reward-info {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-bottom: 20px; /* Добавил отступ снизу */
+        }
+
+        .auth-buttons {
+            margin-top: 20px;
+        }
+        .auth-buttons button{
+            margin: 5px;
+            padding: 8px 12px;
+        }
+
+        /* Стили для модального окна */
+        .modal {
+            display: none; /* Скрыто по умолчанию */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px; /* Ограничиваем ширину */
+            border-radius: 8px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        /* Формы */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        form input[type="text"],
+        form input[type="password"],
+        form input[type="email"],
+        form button {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        form button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="top-ad">Рекламный баннер</div>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-ad">Реклама</div>
+            <div class="sidebar-ad">Реклама</div>
+            <div class="sidebar-ad">Реклама</div>
+            <div class="sidebar-ad">Реклама</div>
+
+        </div>
+        <div class="content">
+            <div class="reward-info">
+                <h2>Ваше вознаграждение:</h2>
+                <p id="reward-amount">0.00000000 BTC</p>
+                <button onclick="withdraw()">Вывести</button>  <!--Добавлена кнопка вывода-->
+            </div>
+
+            <div class="auth-buttons">
+                <button id="registerBtn">Регистрация</button>
+                <button id="loginBtn">Вход</button>
+                <button id="explainBtn">Как это работает?</button>
+            </div>
+        </div>
+        <div class="sidebar">
+            <div class="sidebar-ad">Реклама</div>
+            <div class="sidebar-ad">Реклама</div>
+            <div class="sidebar-ad">Реклама</div>
+            <div class="sidebar-ad">Реклама</div>
+        </div>
+    </div>
+    <div class="bottom-ad">Рекламный баннер</div>
+
+    <!-- Модальные окна -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeRegisterModal">&times;</span>
+            <h2>Регистрация</h2>
+            <form id="registerForm">
+                <input type="text" placeholder="Имя пользователя" required>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Пароль" required>
+                <button type="submit">Зарегистрироваться</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeLoginModal">&times;</span>
+            <h2>Вход</h2>
+            <form id="loginForm">
+                <input type="text" placeholder="Имя пользователя" required>
+                <input type="password" placeholder="Пароль" required>
+                <button type="submit">Войти</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="withdrawModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeWithdrawModal">&times;</span>
+            <h2>Вывод средств</h2>
+            <form id="withdrawForm">
+                <input type="text" placeholder="Bitcoin адрес" id="btcAddress" required>
+                <input type="number" step="0.000000001" placeholder="Сумма BTC" id="withdrawAmount" required>
+                <button type="submit">Запросить вывод</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Локальное хранение данных пользователя
+        let userData = {
+            userId: localStorage.getItem('userId'),
+            username: localStorage.getItem('username'),
+            isRegistered: localStorage.getItem('isRegistered') === 'true',
+            balance: parseFloat(localStorage.getItem('balance')) || 0
+        };
+
+        // Функции для открытия/закрытия модальных окон
+        const registerModal = document.getElementById('registerModal');
+        const loginModal = document.getElementById('loginModal');
+        const withdrawModal = document.getElementById('withdrawModal');
+        const registerBtn = document.getElementById('registerBtn');
+        const loginBtn = document.getElementById('loginBtn');
+        const explainBtn = document.getElementById('explainBtn');
+        const closeRegisterModal = document.getElementById('closeRegisterModal');
+        const closeLoginModal = document.getElementById('closeLoginModal');
+        const closeWithdrawModal = document.getElementById('closeWithdrawModal');
+
+        // Функция повторных попыток
+        async function retry(fn, maxAttempts = 3, delay = 1000) {
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    return await fn();
+                } catch (error) {
+                    if (attempt === maxAttempts) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    console.log(`Попытка ${attempt + 1} из ${maxAttempts}...`);
+                }
+            }
+        }
+
+        // Инициализация пользователя
+        async function initUser() {
+            if (!userData.userId) {
+                try {
+                    await retry(async () => {
+                        const response = await fetch('http://localhost:5000/create_anonymous', {
+                            method: 'POST',
+                            credentials: 'include'
+                        });
+                        if (!response.ok) throw new Error('Ошибка создания пользователя');
+                        const data = await response.json();
+                        userData.userId = data.user_id;
+                        localStorage.setItem('userId', data.user_id);
+                        await updateBalance();
+                    });
+                } catch (error) {
+                    console.error('Не удалось создать пользователя:', error);
+                    alert('Ошибка при создании пользователя. Пожалуйста, обновите страницу.');
+                }
+            } else {
+                await updateBalance();
+            }
+        }
+
+        // Вызываем инициализацию при загрузке страницы
+        initUser();
+
+        // Функция для обновления баланса
+        async function updateBalance() {
+            if (!userData.userId) return;
+            
+            try {
+                await retry(async () => {
+                    const response = await fetch(`http://localhost:5000/balance/${userData.userId}`, {
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('Ошибка получения баланса');
+                    const data = await response.json();
+                    userData.balance = data.balance;
+                    localStorage.setItem('balance', data.balance);
+                    document.getElementById('reward-amount').textContent = data.balance.toFixed(9) + ' BTC';
+                });
+            } catch (error) {
+                console.error('Не удалось обновить баланс:', error);
+            }
+        }
+
+        // Регистрация
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                username: form.querySelector('input[type="text"]').value,
+                email: form.querySelector('input[type="email"]').value,
+                password: form.querySelector('input[type="password"]').value,
+                user_id: userData.userId
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    userData.isRegistered = true;
+                    userData.username = data.username;
+                    localStorage.setItem('isRegistered', 'true');
+                    localStorage.setItem('username', data.username);
+                    alert('Регистрация успешна!');
+                    registerModal.style.display = 'none';
+                    form.reset();
+                } else {
+                    alert(result.error);
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при регистрации');
+            }
+        };
+
+        // Вход
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                username: form.querySelector('input[type="text"]').value,
+                password: form.querySelector('input[type="password"]').value
+            };
+
+            try {
+                const response = await fetch('http://localhost:5000/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    userData.userId = result.user_id;
+                    userData.username = result.username;
+                    userData.isRegistered = true;
+                    localStorage.setItem('userId', result.user_id);
+                    localStorage.setItem('username', result.username);
+                    localStorage.setItem('isRegistered', 'true');
+                    loginModal.style.display = 'none';
+                    updateBalance();
+                    form.reset();
+                    alert('Вход выполнен успешно!');
+                } else {
+                    alert(result.error);
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при входе');
+            }
+        };
+
+        // Вывод средств
+        function withdraw() {
+            if (!userData.isRegistered) {
+                alert('Пожалуйста, зарегистрируйтесь для вывода средств');
+                return;
+            }
+            withdrawModal.style.display = 'block';
+        }
+
+        document.getElementById('withdrawForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const btcAddress = document.getElementById('btcAddress').value;
+            const amount = document.getElementById('withdrawAmount').value;
+
+            try {
+                const response = await fetch(`http://localhost:5000/withdraw/${userData.userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        btc_address: btcAddress,
+                        amount: amount
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    alert('Запрос на вывод создан успешно');
+                    withdrawModal.style.display = 'none';
+                    updateBalance();
+                } else {
+                    alert(result.error);
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при создании запроса на вывод');
+            }
+        };
+
+        // Реклама
+        function loadAds() {
+            const adElements = document.querySelectorAll('.sidebar-ad');
+            adElements.forEach((ad, index) => {
+                ad.innerHTML = `<div style="width:100%;height:100%;display:flex;justify-content:center;align-items:center;">
+                    Реклама ${index + 1}
+                </div>`;
+                
+                // Добавляем отслеживание просмотра с защитой от ошибок
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            setTimeout(() => {
+                                increaseReward().catch(console.error);
+                            }, 1000);
+                        }
+                    });
+                }, { threshold: 0.5 });
+                
+                observer.observe(ad);
+            });
+        }
+
+        // Автоматическое переподключение при потере соединения
+        let reconnectInterval;
+        function startReconnection() {
+            if (!reconnectInterval) {
+                reconnectInterval = setInterval(() => {
+                    if (userData.userId) {
+                        updateBalance().catch(console.error);
+                    }
+                }, 5000);
+            }
+        }
+
+        // Обработка состояния подключения
+        window.addEventListener('online', () => {
+            console.log('Подключение восстановлено');
+            updateBalance();
+            startReconnection();
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Подключение потеряно');
+            if (reconnectInterval) {
+                clearInterval(reconnectInterval);
+                reconnectInterval = null;
+            }
+        });
+
+        // Запускаем автоматическое переподключение
+        startReconnection();
+
+        // Функция увеличения вознаграждения
+        async function increaseReward() {
+            if (!userData.userId) return;
+            
+            try {
+                await retry(async () => {
+                    const response = await fetch(`http://localhost:5000/increase_reward/${userData.userId}`, {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                    if (!response.ok) throw new Error('Ошибка начисления награды');
+                    await updateBalance();
+                });
+            } catch (error) {
+                console.error('Не удалось начислить награду:', error);
+            }
+        }
+
+        // Обработчики кнопок
+        registerBtn.onclick = () => registerModal.style.display = 'block';
+        loginBtn.onclick = () => loginModal.style.display = 'block';
+        closeRegisterModal.onclick = () => registerModal.style.display = 'none';
+        closeLoginModal.onclick = () => loginModal.style.display = 'none';
+        closeWithdrawModal.onclick = () => withdrawModal.style.display = 'none';
+
+        // Закрытие модальных окон при клике вне их
+        window.onclick = (event) => {
+            if (event.target == registerModal) {
+                registerModal.style.display = 'none';
+            }
+            if (event.target == loginModal) {
+                loginModal.style.display = 'none';
+            }
+            if (event.target == withdrawModal) {
+                withdrawModal.style.display = 'none';
+            }
+        }
+
+        explainBtn.onclick = () => {
+            alert("Вы просматриваете рекламу и получаете за это небольшое вознаграждение в биткоинах. Чем больше рекламы вы смотрите, тем больше вы зарабатываете!");
+        }
+    </script>
+</body>
+</html>
