@@ -7,16 +7,20 @@ from datetime import datetime
 import uuid
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+# Разрешаем CORS для GitHub Pages
+CORS(app, supports_credentials=True, origins=['https://ваш-username.github.io'])
 app.secret_key = os.urandom(24)
+
+# Путь к базе данных (для Python Anywhere)
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'users.db')
 
 # Пересоздание базы данных
 def recreate_db():
     # Удаляем старую базу данных, если она существует
-    if os.path.exists('users.db'):
-        os.remove('users.db')
+    if os.path.exists(DB_PATH):
+        os.remove(DB_PATH)
     
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
     # Создаем таблицу пользователей
@@ -42,8 +46,14 @@ def recreate_db():
     conn.close()
     print("База данных успешно пересоздана")
 
+# Функция для подключения к базе данных
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    return conn
+
 # Инициализация базы данных при запуске
-recreate_db()
+if not os.path.exists(DB_PATH):
+    recreate_db()
 
 # Создание анонимного пользователя
 @app.route('/create_anonymous', methods=['POST'])
@@ -51,7 +61,7 @@ def create_anonymous():
     try:
         user_id = str(uuid.uuid4())
         
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute('INSERT INTO users (id, balance, is_anonymous) VALUES (?, 0.0, 1)',
                  (user_id,))
@@ -90,7 +100,7 @@ def register():
             
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         
         # Проверяем существование пользователя или email
@@ -132,7 +142,7 @@ def login():
             
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         c.execute('SELECT id, username FROM users WHERE username = ? AND password = ? AND is_anonymous = 0',
                  (username, hashed_password))
@@ -156,7 +166,7 @@ def login():
 # Получение баланса
 @app.route('/balance/<user_id>', methods=['GET'])
 def get_balance(user_id):
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('SELECT balance FROM users WHERE id = ?', (user_id,))
     result = c.fetchone()
@@ -171,7 +181,7 @@ def get_balance(user_id):
 def increase_reward(user_id):
     reward_amount = 0.000000001  # 1 сатоши за просмотр
     
-    conn = sqlite3.connect('users.db')
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('UPDATE users SET balance = balance + ? WHERE id = ?',
              (reward_amount, user_id))
@@ -191,7 +201,7 @@ def withdraw(user_id):
         if not all([amount, btc_address]):
             return jsonify({'error': 'Не указана сумма или адрес'}), 400
         
-        conn = sqlite3.connect('users.db')
+        conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         
         # Проверяем баланс
@@ -225,4 +235,8 @@ def withdraw(user_id):
             conn.close()
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # Локальный запуск для разработки
+    app.run(debug=True)
+else:
+    # Продакшн настройки
+    app.debug = False 
